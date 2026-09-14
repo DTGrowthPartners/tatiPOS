@@ -19,6 +19,7 @@ import Reportes from './paginas/Reportes';
 import Caja from './paginas/Caja';
 import Configuracion from './paginas/Configuracion';
 import Seguimientos from './paginas/Seguimientos';
+import MisEntregas from './paginas/MisEntregas';
 
 type Sesion = { usuario: Usuario | null; config: Config | null; recargarConfig: () => Promise<void>; salir: () => Promise<void>; esAdmin: boolean };
 const SesionCtx = createContext<Sesion>({ usuario: null, config: null, recargarConfig: async () => {}, salir: async () => {}, esAdmin: false });
@@ -47,6 +48,19 @@ export default function App() {
 
   const valor: Sesion = { usuario, config, recargarConfig, salir, esAdmin: usuario.rol === 'admin' };
   const soloAdmin = (el: React.ReactElement) => (usuario.rol === 'admin' ? el : <Navigate to="/" replace />);
+
+  if (usuario.rol === 'domiciliario') {
+    return (
+      <SesionCtx.Provider value={valor}>
+        <ToastProveedor>
+          <Routes>
+            <Route path="/pedidos/:id/guia" element={<Guia />} />
+            <Route path="*" element={<MisEntregas />} />
+          </Routes>
+        </ToastProveedor>
+      </SesionCtx.Provider>
+    );
+  }
 
   return (
     <SesionCtx.Provider value={valor}>

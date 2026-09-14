@@ -1,8 +1,8 @@
 // Cliente de la API. Todo va con la cookie de sesión.
-export type Usuario = { id: number; usuario: string; nombre: string; rol: 'admin' | 'trabajador' };
+export type Usuario = { id: number; usuario: string; nombre: string; rol: 'admin' | 'trabajador' | 'domiciliario'; domiciliario_id?: number | null };
 export type Producto = { id: string; nombre: string; precio: number; precio_antes: number | null; categoria: string | null; imagen: string | null; descripcion: string | null; activo: number; orden: number };
 export type Zona = { id: number; zona: string; precio: number | null; activo: number };
-export type Domiciliario = { id: number; nombre: string; telefono: string | null; activo: number };
+export type Domiciliario = { id: number; nombre: string; telefono: string | null; activo: number; usuario_id?: number | null; usuario?: string | null; cuenta_activa?: number | null; pendientes?: number };
 export type Item = { id?: number; producto_id: string | null; nombre: string; cantidad: number; precio: number; nota?: string | null; imagen?: string | null };
 export type Pago = { id: number; pedido_id?: number; fecha: string; medio: string; monto: number; comprobante: string | null; nota: string | null; registrado_por_nombre?: string; anulado: number };
 export type Seguimiento = { id: number; tipo: string; telefono: string; programado_para: string; enviado_en: string | null; estado: string; error: string | null; mensaje: string; codigo?: string; cliente_nombre?: string; pedido_id?: number };
@@ -76,10 +76,13 @@ export const api = {
   crearZona: (d: { zona: string; precio: number | null }) => pedir<Zona>('/zonas', json('POST', d)),
   editarZona: (id: number, d: Partial<{ zona: string; precio: number | null; activo: boolean }>) => pedir<Zona>(`/zonas/${id}`, json('PUT', d)),
   domiciliarios: (todos = false) => pedir<Domiciliario[]>(`/domiciliarios${todos ? '?todos=1' : ''}`),
-  crearDomiciliario: (d: { nombre: string; telefono?: string }) => pedir<Domiciliario>('/domiciliarios', json('POST', d)),
+  crearDomiciliario: (d: { nombre: string; telefono?: string; usuario?: string; clave?: string }) => pedir<Domiciliario>('/domiciliarios', json('POST', d)),
+  cuentaDomiciliario: (id: number, d: { usuario?: string; clave: string }) => pedir<Domiciliario>(`/domiciliarios/${id}/cuenta`, json('POST', d)),
+  misEntregas: () => pedir<Pedido[]>('/pedidos/mis-entregas'),
   editarDomiciliario: (id: number, d: Partial<{ nombre: string; telefono: string; activo: boolean }>) => pedir<Domiciliario>(`/domiciliarios/${id}`, json('PUT', d)),
   clientes: (q = '') => pedir<Cliente[]>(`/clientes${qs({ q })}`),
   cliente: (id: number) => pedir<Cliente & { pedidos: Pedido[] }>(`/clientes/${id}`),
+  crearCliente: (d: { nombre: string; telefono: string; email?: string; notas?: string }) => pedir<Cliente>('/clientes', json('POST', d)),
   editarCliente: (id: number, d: Partial<Cliente>) => pedir<Cliente>(`/clientes/${id}`, json('PUT', d)),
   agregarFecha: (id: number, d: { tipo: string; dia_mes: string; descripcion: string }) => pedir(`/clientes/${id}/fechas`, json('POST', d)),
   quitarFecha: (id: number, fid: number) => pedir(`/clientes/${id}/fechas/${fid}`, { method: 'DELETE' }),

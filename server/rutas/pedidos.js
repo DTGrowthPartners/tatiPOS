@@ -9,7 +9,29 @@ import { ahoraLocal, hoyLocal, limpiar, entero, telefonoNormal, horaLocal } from
 import * as seg from '../seguimientos.js';
 
 export const rutas = Router();
-rutas.use(requiere());
+// El domiciliario entra, pero solo a lo suyo: ver, marcar en ruta/entregado y subir la foto
+// de los pedidos que tiene asignados. Todo lo demás exige admin o trabajador.
+rutas.use(requiere('admin', 'trabajador', 'domiciliario'), (req, res, next) => {
+  if (req.usuario.rol !== 'domiciliario') return next();
+  if (req.path === '/mis-entregas') return next();
+  const m = req.path.match(/^\/(\d+)(\/estado|\/evidencia)?$/);
+  const permitido = m && ((req.method === 'GET' && !m[2]) || (req.method === 'POST' && m[2]));
+  if (!permitido) return res.status(403).json({ error: 'Esta parte no es para domiciliarios' });
+  const p = uno('SELECT domiciliario_id FROM pedidos WHERE id = ?', Number(m[1]));
+  if (!p || p.domiciliario_id !== req.usuario.domiciliario_id) return res.status(403).json({ error: 'Ese pedido no está asignado a usted' });
+  if (m[2] === '/estado' && !['en_ruta', 'entregado'].includes(req.body?.estado)) return res.status(403).json({ error: 'Solo puede marcar en ruta o entregado' });
+  next();
+});
+
+// Entregas propias del domiciliario (hoy + atrasadas + próximas).
+rutas.get('/mis-entregas', (req, res) => {
+  const d = req.usuario.domiciliario_id;
+  if (!d) return res.status(403).json({ error: 'Solo para domiciliarios' });
+  const filas = todos(`SELECT p.*, (SELECT group_concat(i.cantidad || 'x ' || i.nombre, ' · ') FROM pedido_items i WHERE i.pedido_id = p.id) AS resumen_items
+      FROM pedidos p WHERE p.domiciliario_id = ? AND (p.estado IN ('confirmado','preparacion','listo','en_ruta') OR (p.estado = 'entregado' AND p.fecha_entrega >= ?))
+      ORDER BY p.estado = 'entregado', p.fecha_entrega, p.urgente DESC, p.franja, p.hora_entrega, p.id`, d, hoyLocal());
+  res.json(filas);
+});
 
 export const ESTADOS = ['nuevo', 'confirmado', 'preparacion', 'listo', 'en_ruta', 'entregado', 'cancelado'];
 export const NOMBRE_ESTADO = {

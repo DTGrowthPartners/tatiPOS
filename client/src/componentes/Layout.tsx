@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Home, ClipboardList, CalendarDays, Flower2, Truck, Users, BookImage, BarChart3, Wallet, Settings, LogOut, Plus, MoreHorizontal, MessageCircle, X } from 'lucide-react';
+import { Home, ClipboardList, CalendarDays, Flower2, Truck, Users, BookImage, BarChart3, Wallet, Settings, LogOut, Plus, MoreHorizontal, MessageCircle, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useSesion } from '../App';
 
 const SECCIONES = [
@@ -22,34 +22,46 @@ export function Layout() {
   const nav = useNavigate();
   const loc = useLocation();
   const [mas, setMas] = useState(false);
+  const [plegada, setPlegada] = useState(() => { try { return localStorage.getItem('tatipos_sidebar') === 'plegada'; } catch { return false; } });
+  const alternar = () => { const v = !plegada; setPlegada(v); try { localStorage.setItem('tatipos_sidebar', v ? 'plegada' : 'abierta'); } catch { /* sin storage */ } };
   const visibles = SECCIONES.filter((s) => !s.admin || esAdmin);
   const clase = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive ? 'bg-rosa-500 text-white shadow-[0_2px_8px_rgba(232,64,144,0.35)]' : 'text-tinta/70 hover:bg-rosa-100'}`;
+    `flex items-center gap-3 rounded-xl text-sm font-medium transition-colors ${plegada ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'} ${isActive ? 'bg-rosa-500 text-white shadow-[0_2px_8px_rgba(232,64,144,0.35)]' : 'text-tinta/70 hover:bg-rosa-100'}`;
   const movil = ['/', '/pedidos', '/agenda', '/produccion'];
   const enMas = !movil.includes(loc.pathname) && !loc.pathname.startsWith('/pedidos');
 
   return (
     <div className="min-h-dvh md:flex">
       {/* Barra lateral (escritorio) */}
-      <aside className="hidden md:flex md:flex-col w-60 shrink-0 bg-white border-r border-rosa-100 sticky top-0 h-dvh no-imprimir">
-        <div className="px-4 py-4 border-b border-rosa-100">
-          <img src="/logo.svg" alt="Floristería Tati Ramos" className="h-12 w-auto" />
-          <p className="text-[11px] font-semibold text-rosa-500 tracking-widest uppercase mt-2">TatiPOS</p>
+      <aside className={`hidden md:flex md:flex-col shrink-0 bg-white border-r border-rosa-100 sticky top-0 h-dvh no-imprimir transition-[width] duration-200 ${plegada ? 'w-[72px]' : 'w-60'}`}>
+        <div className={`border-b border-rosa-100 ${plegada ? 'px-2 py-3 flex flex-col items-center gap-2' : 'px-4 py-4'}`}>
+          {plegada ? <img src="/iconos/icono-96.png" alt="Floristería Tati Ramos" className="size-10 rounded-xl" /> : <img src="/logo.svg" alt="Floristería Tati Ramos" className="h-12 w-auto" />}
+          {!plegada ? <p className="text-[11px] font-semibold text-rosa-500 tracking-widest uppercase mt-2">TatiPOS</p> : null}
         </div>
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+        <nav className={`flex-1 overflow-y-auto space-y-0.5 ${plegada ? 'p-2' : 'p-3'}`}>
           {visibles.map((s) => (
-            <NavLink key={s.a} to={s.a} end={s.a === '/'} className={clase}><s.I className="size-[18px]" />{s.t}</NavLink>
+            <NavLink key={s.a} to={s.a} end={s.a === '/'} className={clase} title={s.t}><s.I className="size-[18px] shrink-0" />{!plegada ? s.t : null}</NavLink>
           ))}
         </nav>
-        <div className="p-3 border-t border-rosa-100">
-          <button onClick={() => nav('/pedidos/nuevo')} className="boton-primario w-full mb-2"><Plus className="size-4" /> Nuevo pedido</button>
-          <div className="flex items-center justify-between px-2 pt-1">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{usuario?.nombre}</p>
-              <p className="text-[11px] text-tinta/50">{esAdmin ? 'Administradora' : 'Equipo'}</p>
+        <div className={`border-t border-rosa-100 ${plegada ? 'p-2 space-y-1' : 'p-3'}`}>
+          <button onClick={() => nav('/pedidos/nuevo')} className={`boton-primario w-full mb-2 ${plegada ? 'px-0' : ''}`} title="Nuevo pedido"><Plus className="size-4" />{!plegada ? ' Nuevo pedido' : null}</button>
+          {plegada ? (
+            <div className="flex flex-col items-center gap-1">
+              <button onClick={alternar} className="p-2 rounded-lg hover:bg-rosa-100 cursor-pointer" title="Expandir menú"><PanelLeftOpen className="size-4" /></button>
+              <button onClick={salir} className="p-2 rounded-lg hover:bg-rosa-100 cursor-pointer" title="Salir"><LogOut className="size-4" /></button>
             </div>
-            <button onClick={salir} className="p-2 rounded-lg hover:bg-rosa-100 cursor-pointer" title="Salir"><LogOut className="size-4" /></button>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between px-2 pt-1">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{usuario?.nombre}</p>
+                <p className="text-[11px] text-tinta/50">{esAdmin ? 'Administradora' : 'Equipo'}</p>
+              </div>
+              <div className="flex">
+                <button onClick={alternar} className="p-2 rounded-lg hover:bg-rosa-100 cursor-pointer" title="Plegar menú"><PanelLeftClose className="size-4" /></button>
+                <button onClick={salir} className="p-2 rounded-lg hover:bg-rosa-100 cursor-pointer" title="Salir"><LogOut className="size-4" /></button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 

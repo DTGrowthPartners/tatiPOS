@@ -94,24 +94,50 @@ function Zonas() {
 function Domiciliarios() {
   const { avisar } = useToast();
   const [lista, setLista] = useState<Domiciliario[]>([]);
-  const [nuevo, setNuevo] = useState({ nombre: '', telefono: '' });
+  const [nuevo, setNuevo] = useState({ nombre: '', telefono: '', usuario: '', clave: '' });
+  const [cuenta, setCuenta] = useState<null | { d: Domiciliario; usuario: string; clave: string }>(null);
   const cargar = () => api.domiciliarios(true).then(setLista);
   useEffect(() => { cargar(); }, []);
+  const err = (e: Error) => avisar(e.message, 'error');
   return (
-    <div className="tarjeta p-4 max-w-2xl space-y-3">
-      <p className="text-sm text-tinta/60">Con el teléfono, la guía y la ruta del día se les mandan por WhatsApp con un botón.</p>
-      {lista.map((d) => (
-        <div key={d.id} className={`flex items-center gap-2 text-sm ${!d.activo ? 'opacity-50' : ''}`}>
-          <input className="campo flex-1 py-1.5" defaultValue={d.nombre} onBlur={(e) => e.target.value !== d.nombre && api.editarDomiciliario(d.id, { nombre: e.target.value }).then(cargar)} />
-          <input className="campo w-40 py-1.5" defaultValue={d.telefono || ''} placeholder="teléfono" onBlur={(e) => e.target.value !== (d.telefono || '') && api.editarDomiciliario(d.id, { telefono: e.target.value }).then(cargar)} />
-          <button className="text-xs cursor-pointer text-tinta/60 w-16" onClick={() => api.editarDomiciliario(d.id, { activo: !d.activo }).then(cargar)}>{d.activo ? 'ocultar' : 'activar'}</button>
+    <div className="space-y-4 max-w-3xl">
+      <div className="tarjeta p-4 space-y-3">
+        <h2 className="font-bold">Domiciliarios</h2>
+        <p className="text-sm text-tinta/60">Cada domiciliario puede tener su <b>propia cuenta</b>: entra a tatipos.dtgp.ai con su usuario y ve solo los pedidos que le asignen, con dirección, teléfono, mapa y el botón de entregado con foto. Deshabilitar apaga el acceso al instante.</p>
+        <div className="divide-y divide-rosa-50">
+          {lista.map((d) => (
+            <div key={d.id} className={`py-3 grid sm:grid-cols-12 gap-2 items-center text-sm ${!d.activo ? 'opacity-50' : ''}`}>
+              <input className="campo py-1.5 sm:col-span-3" defaultValue={d.nombre} onBlur={(e) => e.target.value !== d.nombre && api.editarDomiciliario(d.id, { nombre: e.target.value }).then(cargar).catch(err)} />
+              <input className="campo py-1.5 sm:col-span-3" defaultValue={d.telefono || ''} placeholder="teléfono" onBlur={(e) => e.target.value !== (d.telefono || '') && api.editarDomiciliario(d.id, { telefono: e.target.value }).then(cargar).catch(err)} />
+              <div className="sm:col-span-4 flex flex-wrap items-center gap-2">
+                {d.usuario ? <><Insignia clase="bg-sky-100 text-sky-800">@{d.usuario}</Insignia><button className="text-xs text-rosa-600 font-semibold cursor-pointer" onClick={() => setCuenta({ d, usuario: d.usuario!, clave: '' })}>cambiar clave</button></> : <button className="text-xs text-rosa-600 font-semibold cursor-pointer" onClick={() => setCuenta({ d, usuario: d.nombre.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12), clave: '' })}>+ crear cuenta</button>}
+                {d.pendientes ? <span className="text-xs text-tinta/50">{d.pendientes} pendiente{d.pendientes === 1 ? '' : 's'}</span> : null}
+              </div>
+              <button className={`sm:col-span-2 boton py-1.5 text-xs cursor-pointer ${d.activo ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`} onClick={() => api.editarDomiciliario(d.id, { activo: !d.activo }).then(cargar).catch(err)}>{d.activo ? 'Deshabilitar' : 'Habilitar'}</button>
+            </div>
+          ))}
         </div>
-      ))}
-      <div className="flex gap-2 items-end border-t border-rosa-100 pt-3">
-        <Campo etiqueta="Nombre" clase="flex-1"><input className="campo" value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} /></Campo>
-        <Campo etiqueta="Teléfono"><input className="campo w-40" value={nuevo.telefono} onChange={(e) => setNuevo({ ...nuevo, telefono: e.target.value })} /></Campo>
-        <button className="boton-primario" onClick={() => api.crearDomiciliario(nuevo).then(() => { setNuevo({ nombre: '', telefono: '' }); cargar(); }).catch((e) => avisar(e.message, 'error'))}>Agregar</button>
       </div>
+      <div className="tarjeta p-4 space-y-3">
+        <h2 className="font-bold text-sm">Nuevo domiciliario</h2>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Campo etiqueta="Nombre"><input className="campo" value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} /></Campo>
+          <Campo etiqueta="Teléfono"><input className="campo" inputMode="tel" value={nuevo.telefono} onChange={(e) => setNuevo({ ...nuevo, telefono: e.target.value })} /></Campo>
+          <Campo etiqueta="Usuario para entrar (opcional)" ayuda="Si lo deja vacío, no tendrá cuenta por ahora"><input className="campo" autoCapitalize="none" value={nuevo.usuario} onChange={(e) => setNuevo({ ...nuevo, usuario: e.target.value })} /></Campo>
+          <Campo etiqueta="Clave (mínimo 6)"><input className="campo" value={nuevo.clave} onChange={(e) => setNuevo({ ...nuevo, clave: e.target.value })} /></Campo>
+        </div>
+        <button className="boton-primario" onClick={() => api.crearDomiciliario({ nombre: nuevo.nombre, telefono: nuevo.telefono, usuario: nuevo.usuario || undefined, clave: nuevo.clave || undefined }).then(() => { avisar('Domiciliario creado'); setNuevo({ nombre: '', telefono: '', usuario: '', clave: '' }); cargar(); }).catch(err)}>Agregar domiciliario</button>
+      </div>
+      <Modal abierto={Boolean(cuenta)} cerrar={() => setCuenta(null)} titulo={cuenta?.d.usuario ? `Nueva clave para ${cuenta.d.nombre}` : `Cuenta para ${cuenta?.d.nombre}`}>
+        {cuenta ? (
+          <div className="space-y-3">
+            {!cuenta.d.usuario ? <Campo etiqueta="Usuario para entrar"><input className="campo" autoCapitalize="none" value={cuenta.usuario} onChange={(e) => setCuenta({ ...cuenta, usuario: e.target.value })} /></Campo> : null}
+            <Campo etiqueta="Clave (mínimo 6)"><input className="campo" value={cuenta.clave} onChange={(e) => setCuenta({ ...cuenta, clave: e.target.value })} /></Campo>
+            <p className="text-xs text-tinta/60">Entra en <b>tatipos.dtgp.ai</b> con ese usuario y clave desde el celular.</p>
+            <button className="boton-primario w-full py-3" onClick={() => api.cuentaDomiciliario(cuenta.d.id, { usuario: cuenta.usuario, clave: cuenta.clave }).then(() => { avisar('Cuenta lista'); setCuenta(null); cargar(); }).catch(err)}>Guardar</button>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

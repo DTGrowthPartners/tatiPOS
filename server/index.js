@@ -38,8 +38,8 @@ app.use('/api', catalogo);
 app.use('/api', operacion);
 
 // Archivos: fotos de catálogo (públicas para el que tenga sesión) y adjuntos
-app.use('/fotos', requiere(), express.static(DIR_FOTOS, { maxAge: '7d' }));
-app.use('/uploads', requiere(), express.static(DIR_UPLOADS, { maxAge: '7d' }));
+app.use('/fotos', requiere('admin', 'trabajador', 'domiciliario'), express.static(DIR_FOTOS, { maxAge: '7d' }));
+app.use('/uploads', requiere('admin', 'trabajador', 'domiciliario'), express.static(DIR_UPLOADS, { maxAge: '7d' }));
 
 app.use('/api', (req, res) => res.status(404).json({ error: `no existe ${req.method} ${req.path}` }));
 

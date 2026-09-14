@@ -10,7 +10,7 @@ import { ESTADO, PAGO, type Estado } from '../lib/estados';
 export default function Entregas() {
   const [sp, setSp] = useSearchParams();
   const fecha = sp.get('fecha') || hoy();
-  const { config } = useSesion();
+  const { config, esAdmin } = useSesion();
   const { avisar } = useToast();
   const [d, setD] = useState<Awaited<ReturnType<typeof api.entregas>> | null>(null);
   const [subiendo, setSubiendo] = useState<number | null>(null);
@@ -39,7 +39,7 @@ export default function Entregas() {
   return (
     <div>
       <input ref={fotoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) conFoto(f); e.target.value = ''; }} />
-      <Encabezado titulo="Entregas del día" sub={`${pendientes.length} por entregar · ${d.pedidos.length - pendientes.length} entregados`} acciones={<SelectorFecha valor={fecha} onChange={(f) => setSp({ fecha: f })} />} />
+      <Encabezado titulo="Entregas del día" sub={`${pendientes.length} por entregar · ${d.pedidos.length - pendientes.length} entregados`} acciones={<><SelectorFecha valor={fecha} onChange={(f) => setSp({ fecha: f })} />{esAdmin ? <Link to="/configuracion?tab=domiciliarios" className="boton-secundario">Domiciliarios</Link> : null}</>} />
       {!d.pedidos.length ? <p className="text-sm text-tinta/50 text-center py-10">Sin domicilios para este día 🌸</p> : null}
       <div className="space-y-4">
         {grupos.map((g) => (

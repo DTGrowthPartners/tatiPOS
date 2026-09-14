@@ -3,7 +3,8 @@ import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs';
 import { uno, todos, correr } from '../db.js';
-import { requiere } from '../auth.js';
+import { requiere, hashClave } from '../auth.js';
+import { transaccion } from '../db.js';
 import { DIR_FOTOS } from '../config.js';
 import { limpiar, entero, telefonoNormal } from '../util.js';
 
@@ -98,22 +99,64 @@ rutas.delete('/zonas/:id', requiere('admin'), (req, res) => {
 });
 
 // --- domiciliarios -------------------------------------------------------------
+// Cada domiciliario puede tener su propia cuenta (rol `domiciliario`): entra al
+// sistema y ve solo sus entregas. Habilitar/deshabilitar apaga la cuenta también.
+function domiciliarioCompleto(id) {
+  return uno(`SELECT d.*, u.usuario, u.activo AS cuenta_activa FROM domiciliarios d LEFT JOIN usuarios u ON u.id = d.usuario_id WHERE d.id = ?`, id);
+}
 rutas.get('/domiciliarios', (req, res) => {
-  res.json(todos(`SELECT * FROM domiciliarios ${req.query.todos === '1' ? '' : 'WHERE activo = 1'} ORDER BY nombre`));
+  res.json(todos(`SELECT d.*, u.usuario, u.activo AS cuenta_activa,
+      (SELECT COUNT(*) FROM pedidos p WHERE p.domiciliario_id = d.id AND p.estado IN ('confirmado','preparacion','listo','en_ruta')) AS pendientes
+      FROM domiciliarios d LEFT JOIN usuarios u ON u.id = d.usuario_id ${req.query.todos === '1' ? '' : 'WHERE d.activo = 1'} ORDER BY d.activo DESC, d.nombre`));
 });
+function crearCuenta(d, usuario, clave) {
+  const u = limpiar(usuario, 60).toLowerCase().replace(/\s+/g, '');
+  if (!u) throw new Error('Falta el usuario para la cuenta');
+  if (String(clave || '').length < 6) throw new Error('La clave debe tener al menos 6 caracteres');
+  if (uno('SELECT id FROM usuarios WHERE lower(usuario) = ?', u)) throw new Error('Ese usuario ya existe');
+  const r = correr('INSERT INTO usuarios(usuario, nombre, clave_hash, rol, activo) VALUES (?,?,?,?,?)', u, d.nombre, hashClave(clave), 'domiciliario', d.activo);
+  correr('UPDATE domiciliarios SET usuario_id = ? WHERE id = ?', Number(r.lastInsertRowid), d.id);
+}
 rutas.post('/domiciliarios', requiere('admin'), (req, res) => {
   const nombre = limpiar(req.body?.nombre, 80);
   if (!nombre) return res.status(400).json({ error: 'Falta el nombre' });
-  const r = correr('INSERT INTO domiciliarios(nombre, telefono) VALUES (?,?)', nombre, telefonoNormal(req.body?.telefono) || null);
-  res.json(uno('SELECT * FROM domiciliarios WHERE id = ?', Number(r.lastInsertRowid)));
+  try {
+    const id = transaccion(() => {
+      const r = correr('INSERT INTO domiciliarios(nombre, telefono) VALUES (?,?)', nombre, telefonoNormal(req.body?.telefono) || null);
+      const d = uno('SELECT * FROM domiciliarios WHERE id = ?', Number(r.lastInsertRowid));
+      if (req.body?.usuario) crearCuenta(d, req.body.usuario, req.body.clave);
+      return d.id;
+    });
+    res.json(domiciliarioCompleto(id));
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 rutas.put('/domiciliarios/:id', requiere('admin'), (req, res) => {
   const d = uno('SELECT * FROM domiciliarios WHERE id = ?', Number(req.params.id));
   if (!d) return res.status(404).json({ error: 'No existe' });
   const b = req.body || {};
+  const activo = b.activo === undefined ? d.activo : (b.activo ? 1 : 0);
   correr('UPDATE domiciliarios SET nombre = ?, telefono = ?, activo = ? WHERE id = ?', limpiar(b.nombre, 80) || d.nombre,
-    b.telefono === undefined ? d.telefono : (telefonoNormal(b.telefono) || null), b.activo === undefined ? d.activo : (b.activo ? 1 : 0), d.id);
-  res.json(uno('SELECT * FROM domiciliarios WHERE id = ?', d.id));
+    b.telefono === undefined ? d.telefono : (telefonoNormal(b.telefono) || null), activo, d.id);
+  if (d.usuario_id) {
+    correr('UPDATE usuarios SET nombre = ?, activo = ? WHERE id = ?', limpiar(b.nombre, 80) || d.nombre, activo, d.usuario_id);
+    if (!activo) correr('DELETE FROM sesiones WHERE usuario_id = ?', d.usuario_id);
+  }
+  res.json(domiciliarioCompleto(d.id));
+});
+// Crear la cuenta de un domiciliario existente, o cambiarle la clave.
+rutas.post('/domiciliarios/:id/cuenta', requiere('admin'), (req, res) => {
+  const d = uno('SELECT * FROM domiciliarios WHERE id = ?', Number(req.params.id));
+  if (!d) return res.status(404).json({ error: 'No existe' });
+  try {
+    if (d.usuario_id) {
+      if (String(req.body?.clave || '').length < 6) return res.status(400).json({ error: 'La clave debe tener al menos 6 caracteres' });
+      correr('UPDATE usuarios SET clave_hash = ? WHERE id = ?', hashClave(req.body.clave), d.usuario_id);
+      correr('DELETE FROM sesiones WHERE usuario_id = ?', d.usuario_id);
+    } else {
+      crearCuenta(d, req.body?.usuario, req.body?.clave);
+    }
+    res.json(domiciliarioCompleto(d.id));
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // --- clientes (CRM automático) --------------------------------------------------
@@ -125,6 +168,15 @@ rutas.get('/clientes', (req, res) => {
       FROM clientes c LEFT JOIN pedidos p ON p.cliente_id = c.id
       ${q ? 'WHERE c.nombre LIKE ? OR c.telefono LIKE ? OR c.email LIKE ?' : ''}
       GROUP BY c.id ORDER BY ultimo_pedido DESC, c.id DESC LIMIT 500`, ...(q ? [like, like, like] : [])));
+});
+rutas.post('/clientes', (req, res) => {
+  const b = req.body || {};
+  const tel = telefonoNormal(b.telefono);
+  const nombre = limpiar(b.nombre, 80);
+  if (!tel && !nombre) return res.status(400).json({ error: 'Ponga al menos el teléfono o el nombre' });
+  if (tel && uno('SELECT id FROM clientes WHERE telefono = ?', tel)) return res.status(400).json({ error: 'Ya existe un cliente con ese teléfono' });
+  const r = correr('INSERT INTO clientes(telefono, nombre, email, notas) VALUES (?,?,?,?)', tel || null, nombre || null, limpiar(b.email, 120) || null, limpiar(b.notas, 800) || null);
+  res.json(uno('SELECT * FROM clientes WHERE id = ?', Number(r.lastInsertRowid)));
 });
 rutas.get('/clientes/:id', (req, res) => {
   const c = uno('SELECT * FROM clientes WHERE id = ?', Number(req.params.id));

@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { Pencil, Printer, MessageCircle, Camera, Phone, MapPin, CreditCard, Truck, Flower2, XCircle, Send } from 'lucide-react';
 import { api, type Pedido, type Domiciliario } from '../api';
 import { useSesion } from '../App';
-import { Cargando, Insignia, Modal, Campo, useToast } from '../componentes/ui';
+import { Cargando, Insignia, Modal, Campo, Selector, useToast } from '../componentes/ui';
+import { ICONO_MEDIO } from './PedidoForm';
 import { pesos, fechaLarga, fechaHora, telefonoBonito, enlaceWa, hoy } from '../lib/formato';
 import { ESTADO, PAGO, SEGUIMIENTO, type Estado } from '../lib/estados';
 
@@ -214,7 +215,7 @@ export default function PedidoDetalle() {
       <Modal abierto={modal === 'pago'} cerrar={() => setModal('')} titulo={`Registrar pago · ${p.codigo}`}>
         <div className="space-y-3">
           <Campo etiqueta="Medio de pago">
-            <select className="campo" value={pago.medio} onChange={(e) => setPago({ ...pago, medio: e.target.value })}>{config?.medios_pago.map((m) => <option key={m.clave} value={m.clave}>{m.nombre}</option>)}</select>
+            <Selector valor={pago.medio} onChange={(v) => setPago({ ...pago, medio: v })} opciones={(config?.medios_pago || []).map((m) => ({ valor: m.clave, nombre: m.nombre, detalle: m.detalle, icono: <span>{ICONO_MEDIO[m.clave] || '💳'}</span> }))} />
           </Campo>
           <Campo etiqueta="Monto" ayuda={`Pendiente: ${pesos(pendiente)}`}><input className="campo text-lg font-bold" inputMode="numeric" value={pago.monto} onChange={(e) => setPago({ ...pago, monto: e.target.value })} /></Campo>
           <div className="flex gap-2">{[pendiente, 50000, 100000].filter((v, i, a) => v > 0 && a.indexOf(v) === i).map((v) => <button key={v} type="button" className="insignia bg-rosa-100 text-rosa-700 cursor-pointer" onClick={() => setPago({ ...pago, monto: String(v) })}>{pesos(v)}</button>)}</div>

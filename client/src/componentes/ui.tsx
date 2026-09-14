@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { X, ChevronDown, Check } from 'lucide-react';
 
 // --- Toasts ---------------------------------------------------------------------
 type Toast = { id: number; texto: string; tipo: 'ok' | 'error' | 'info' };
@@ -102,6 +102,42 @@ export function Stat({ etiqueta, valor, sub, clase = '' }: { etiqueta: string; v
       <p className="text-xs font-semibold text-tinta/50 uppercase tracking-wide">{etiqueta}</p>
       <p className="text-2xl font-extrabold mt-1 tracking-tight">{valor}</p>
       {sub ? <p className="text-xs text-tinta/60 mt-0.5">{sub}</p> : null}
+    </div>
+  );
+}
+
+// --- Selector (desplegable propio, con detalle por opción) --------------------------
+export type Opcion = { valor: string; nombre: string; detalle?: string; icono?: ReactNode };
+export function Selector({ valor, opciones, onChange, placeholder = 'Elegir…', clase = '' }: { valor: string; opciones: Opcion[]; onChange: (v: string) => void; placeholder?: string; clase?: string }) {
+  const [abierto, setAbierto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!abierto) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAbierto(false); };
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setAbierto(false); };
+    document.addEventListener('mousedown', h); window.addEventListener('keydown', k);
+    return () => { document.removeEventListener('mousedown', h); window.removeEventListener('keydown', k); };
+  }, [abierto]);
+  const actual = opciones.find((o) => o.valor === valor);
+  return (
+    <div ref={ref} className={`relative ${clase}`}>
+      <button type="button" onClick={() => setAbierto(!abierto)} aria-haspopup="listbox" aria-expanded={abierto}
+        className={`campo flex items-center justify-between gap-2 text-left cursor-pointer ${abierto ? 'ring-2 ring-rosa-300 border-rosa-400' : ''}`}>
+        <span className="flex items-center gap-2 min-w-0">{actual?.icono}<span className={`truncate ${actual ? '' : 'text-tinta/40'}`}>{actual?.nombre || placeholder}</span></span>
+        <ChevronDown className={`size-4 text-tinta/50 shrink-0 transition-transform ${abierto ? 'rotate-180' : ''}`} />
+      </button>
+      {abierto ? (
+        <ul role="listbox" className="absolute z-30 mt-1 left-0 right-0 tarjeta shadow-xl max-h-72 overflow-y-auto py-1">
+          {opciones.map((o) => (
+            <li key={o.valor} role="option" aria-selected={o.valor === valor} onClick={() => { onChange(o.valor); setAbierto(false); }}
+              className={`px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-rosa-50 ${o.valor === valor ? 'bg-rosa-50' : ''}`}>
+              {o.icono ? <span className="shrink-0">{o.icono}</span> : null}
+              <span className="min-w-0 flex-1"><span className="block text-sm font-medium">{o.nombre}</span>{o.detalle ? <span className="block text-[11px] text-tinta/50 truncate">{o.detalle}</span> : null}</span>
+              {o.valor === valor ? <Check className="size-4 text-rosa-500 shrink-0" /> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Search, Trash2, Plus, Minus } from 'lucide-react';
 import { api, type Producto, type Zona, type Item, type Pedido, type Cliente } from '../api';
 import { useSesion } from '../App';
-import { Campo, Cargando, Encabezado, useToast } from '../componentes/ui';
+import { Campo, Cargando, Encabezado, Selector, useToast } from '../componentes/ui';
 import { pesos, hoy, sumarDias, telefonoBonito } from '../lib/formato';
+
+export const ICONO_MEDIO: Record<string, string> = { efectivo: '💵', bancolombia: '🏦', nequi: '📱', daviplata: '📲', davivienda: '🏦', breb: '🔑', tarjeta: '💳', paypal: '🌐', otro: '💰' };
 
 type Form = {
   canal: string; cliente_nombre: string; cliente_telefono: string; cliente_email: string;
@@ -112,32 +114,11 @@ export default function PedidoForm() {
       <Encabezado titulo={id ? 'Editar pedido' : 'Nuevo pedido'} sub={id ? '' : 'Producto, entrega, tarjeta y pago en un solo paso'} />
       <div className="grid lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3 space-y-4">
-          {/* 1. Cliente */}
-          <Seccion n={1} titulo="Quién pide">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Campo etiqueta="Teléfono (WhatsApp)"><input className="campo" inputMode="tel" placeholder="300 123 4567" value={f.cliente_telefono} onChange={(e) => set('cliente_telefono', e.target.value)} /></Campo>
-              <Campo etiqueta="Nombre"><input className="campo" value={f.cliente_nombre} onChange={(e) => set('cliente_nombre', e.target.value)} /></Campo>
-              <Campo etiqueta="Canal">
-                <select className="campo" value={f.canal} onChange={(e) => set('canal', e.target.value)}>{config?.canales.map((c) => <option key={c.clave} value={c.clave}>{c.nombre}</option>)}</select>
-              </Campo>
-              <Campo etiqueta="Correo (opcional)"><input className="campo" type="email" value={f.cliente_email} onChange={(e) => set('cliente_email', e.target.value)} /></Campo>
-            </div>
-            {sugerencias.length ? (
-              <div className="mt-2 rounded-xl border border-rosa-200 bg-rosa-50 divide-y divide-rosa-100">
-                {sugerencias.map((c) => (
-                  <button key={c.id} type="button" onClick={() => { setF((a) => ({ ...a, cliente_nombre: c.nombre || a.cliente_nombre, cliente_telefono: c.telefono || a.cliente_telefono, cliente_email: c.email || '' })); setSugerencias([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-rosa-100 cursor-pointer flex justify-between">
-                    <span><b>{c.nombre || 'Sin nombre'}</b> · {telefonoBonito(c.telefono)}</span><span className="text-xs text-tinta/60">{c.pedidos as number} pedidos · {pesos(c.valor)}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </Seccion>
-
           {/* 2. Productos */}
-          <Seccion n={2} titulo="Qué lleva">
+          <Seccion n={1} titulo="Qué se va a comprar">
             <div className="flex gap-2 mb-2">
               <div className="relative flex-1"><Search className="size-4 absolute left-3 top-3 text-tinta/40" /><input className="campo pl-9" placeholder="Buscar en el catálogo…" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>
-              <select className="campo w-auto max-w-[45%]" value={cat} onChange={(e) => setCat(e.target.value)}><option value="">Todas</option>{categorias.map((c) => <option key={c}>{c}</option>)}</select>
+              <Selector clase="w-44 shrink-0" valor={cat} onChange={setCat} opciones={[{ valor: '', nombre: 'Todas las categorías' }, ...categorias.map((c) => ({ valor: c, nombre: c }))]} />
             </div>
             {(busca || cat) ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1 mb-3">
@@ -177,6 +158,31 @@ export default function PedidoForm() {
             ) : <p className="text-sm text-tinta/50 text-center py-3">Busque en el catálogo o escriba un arreglo libre.</p>}
           </Seccion>
 
+          {/* 4. Destinatario y tarjeta */}
+          <Seccion n={2} titulo="Para quién y la tarjeta">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Campo etiqueta="Ocasión" clase="sm:col-span-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {config?.ocasiones.map((o) => <button key={o.clave} type="button" onClick={() => set('ocasion', f.ocasion === o.clave ? '' : o.clave)} className={`insignia cursor-pointer py-1.5 ${f.ocasion === o.clave ? 'bg-rosa-500 text-white' : 'bg-rosa-50 text-tinta/70 border border-rosa-100'}`}>{o.nombre}</button>)}
+                </div>
+              </Campo>
+              {esFunebre ? (<>
+                <Campo etiqueta="Nombre del fallecido"><input className="campo" value={f.fallecido} onChange={(e) => set('fallecido', e.target.value)} /></Campo>
+                <div className="grid grid-cols-2 gap-2">
+                  <Campo etiqueta="Funeraria"><input className="campo" value={f.funeraria} onChange={(e) => set('funeraria', e.target.value)} placeholder="Jardines, Los Olivos…" /></Campo>
+                  <Campo etiqueta="Sala"><input className="campo" value={f.sala} onChange={(e) => set('sala', e.target.value)} /></Campo>
+                </div>
+              </>) : (<>
+                <Campo etiqueta="Quién recibe"><input className="campo" value={f.recibe_nombre} onChange={(e) => set('recibe_nombre', e.target.value)} /></Campo>
+                <Campo etiqueta="Teléfono de quien recibe"><input className="campo" inputMode="tel" value={f.recibe_telefono} onChange={(e) => set('recibe_telefono', e.target.value)} /></Campo>
+              </>)}
+              <Campo etiqueta="Tarjeta · Para:"><input className="campo" value={f.tarjeta_para} onChange={(e) => set('tarjeta_para', e.target.value)} /></Campo>
+              <Campo etiqueta="Tarjeta · De: (firma)"><input className="campo" value={f.tarjeta_de} onChange={(e) => set('tarjeta_de', e.target.value)} /></Campo>
+              <Campo etiqueta="Mensaje de la tarjeta" clase="sm:col-span-2"><textarea className="campo" rows={3} value={f.tarjeta_mensaje} onChange={(e) => set('tarjeta_mensaje', e.target.value)} /></Campo>
+              <Campo etiqueta="Especificaciones del arreglo" clase="sm:col-span-2" ayuda="Colores, cambios, adicionales, foto de referencia (enlace)…"><textarea className="campo" rows={2} value={f.especificaciones} onChange={(e) => set('especificaciones', e.target.value)} /></Campo>
+              <Campo etiqueta="Notas internas (no las ve el cliente)" clase="sm:col-span-2"><input className="campo" value={f.notas_internas} onChange={(e) => set('notas_internas', e.target.value)} /></Campo>
+            </div>
+          </Seccion>
           {/* 3. Entrega */}
           <Seccion n={3} titulo="Cuándo y dónde">
             <div className="grid grid-cols-2 gap-2 mb-3">
@@ -189,7 +195,7 @@ export default function PedidoForm() {
                 <input className="campo" type="date" value={f.fecha_entrega} min={sumarDias(hoy(), -1)} onChange={(e) => set('fecha_entrega', e.target.value)} />
               </Campo>
               <Campo etiqueta="Franja">
-                <select className="campo" value={f.franja} onChange={(e) => set('franja', e.target.value)}><option value="">Sin franja</option>{franjas.map((fr) => <option key={fr.clave} value={fr.clave}>{fr.nombre} ({fr.desde}–{fr.hasta})</option>)}</select>
+                <Selector valor={f.franja} onChange={(v) => set('franja', v)} opciones={[{ valor: '', nombre: 'Sin franja' }, ...franjas.map((fr) => ({ valor: fr.clave, nombre: fr.nombre, detalle: `${fr.desde} – ${fr.hasta}` }))]} />
               </Campo>
               <Campo etiqueta="Hora puntual (opcional)"><input className="campo" type="time" value={f.hora_entrega} onChange={(e) => set('hora_entrega', e.target.value)} /></Campo>
             </div>
@@ -222,31 +228,27 @@ export default function PedidoForm() {
             ) : null}
           </Seccion>
 
-          {/* 4. Destinatario y tarjeta */}
-          <Seccion n={4} titulo="Para quién y la tarjeta">
+          {/* 1. Cliente */}
+          <Seccion n={4} titulo="Quién pide (cliente)">
             <div className="grid sm:grid-cols-2 gap-3">
-              <Campo etiqueta="Ocasión" clase="sm:col-span-2">
-                <div className="flex flex-wrap gap-1.5">
-                  {config?.ocasiones.map((o) => <button key={o.clave} type="button" onClick={() => set('ocasion', f.ocasion === o.clave ? '' : o.clave)} className={`insignia cursor-pointer py-1.5 ${f.ocasion === o.clave ? 'bg-rosa-500 text-white' : 'bg-rosa-50 text-tinta/70 border border-rosa-100'}`}>{o.nombre}</button>)}
-                </div>
+              <Campo etiqueta="Teléfono (WhatsApp)"><input className="campo" inputMode="tel" placeholder="300 123 4567" value={f.cliente_telefono} onChange={(e) => set('cliente_telefono', e.target.value)} /></Campo>
+              <Campo etiqueta="Nombre"><input className="campo" value={f.cliente_nombre} onChange={(e) => set('cliente_nombre', e.target.value)} /></Campo>
+              <Campo etiqueta="Canal">
+                <Selector valor={f.canal} onChange={(v) => set('canal', v)} opciones={(config?.canales || []).map((c) => ({ valor: c.clave, nombre: c.nombre }))} />
               </Campo>
-              {esFunebre ? (<>
-                <Campo etiqueta="Nombre del fallecido"><input className="campo" value={f.fallecido} onChange={(e) => set('fallecido', e.target.value)} /></Campo>
-                <div className="grid grid-cols-2 gap-2">
-                  <Campo etiqueta="Funeraria"><input className="campo" value={f.funeraria} onChange={(e) => set('funeraria', e.target.value)} placeholder="Jardines, Los Olivos…" /></Campo>
-                  <Campo etiqueta="Sala"><input className="campo" value={f.sala} onChange={(e) => set('sala', e.target.value)} /></Campo>
-                </div>
-              </>) : (<>
-                <Campo etiqueta="Quién recibe"><input className="campo" value={f.recibe_nombre} onChange={(e) => set('recibe_nombre', e.target.value)} /></Campo>
-                <Campo etiqueta="Teléfono de quien recibe"><input className="campo" inputMode="tel" value={f.recibe_telefono} onChange={(e) => set('recibe_telefono', e.target.value)} /></Campo>
-              </>)}
-              <Campo etiqueta="Tarjeta · Para:"><input className="campo" value={f.tarjeta_para} onChange={(e) => set('tarjeta_para', e.target.value)} /></Campo>
-              <Campo etiqueta="Tarjeta · De: (firma)"><input className="campo" value={f.tarjeta_de} onChange={(e) => set('tarjeta_de', e.target.value)} /></Campo>
-              <Campo etiqueta="Mensaje de la tarjeta" clase="sm:col-span-2"><textarea className="campo" rows={3} value={f.tarjeta_mensaje} onChange={(e) => set('tarjeta_mensaje', e.target.value)} /></Campo>
-              <Campo etiqueta="Especificaciones del arreglo" clase="sm:col-span-2" ayuda="Colores, cambios, adicionales, foto de referencia (enlace)…"><textarea className="campo" rows={2} value={f.especificaciones} onChange={(e) => set('especificaciones', e.target.value)} /></Campo>
-              <Campo etiqueta="Notas internas (no las ve el cliente)" clase="sm:col-span-2"><input className="campo" value={f.notas_internas} onChange={(e) => set('notas_internas', e.target.value)} /></Campo>
+              <Campo etiqueta="Correo (opcional)"><input className="campo" type="email" value={f.cliente_email} onChange={(e) => set('cliente_email', e.target.value)} /></Campo>
             </div>
+            {sugerencias.length ? (
+              <div className="mt-2 rounded-xl border border-rosa-200 bg-rosa-50 divide-y divide-rosa-100">
+                {sugerencias.map((c) => (
+                  <button key={c.id} type="button" onClick={() => { setF((a) => ({ ...a, cliente_nombre: c.nombre || a.cliente_nombre, cliente_telefono: c.telefono || a.cliente_telefono, cliente_email: c.email || '' })); setSugerencias([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-rosa-100 cursor-pointer flex justify-between">
+                    <span><b>{c.nombre || 'Sin nombre'}</b> · {telefonoBonito(c.telefono)}</span><span className="text-xs text-tinta/60">{c.pedidos as number} pedidos · {pesos(c.valor)}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </Seccion>
+
         </div>
 
         {/* Resumen y pago */}
@@ -261,9 +263,8 @@ export default function PedidoForm() {
               <div className="flex justify-between text-lg font-extrabold border-t border-rosa-100 pt-2"><span>Total</span><span className="text-rosa-600">{pesos(total)}</span></div>
             </div>
             <Campo etiqueta="Medio de pago previsto" ayuda={medio?.recargo ? `Tarjeta y PayPal llevan ${medio.recargo}% adicional` : ''}>
-              <select className="campo" value={f.medio_pago_previsto} onChange={(e) => { set('medio_pago_previsto', e.target.value); set('recargo_pct', ''); }}>
-                <option value="">Sin definir</option>{config?.medios_pago.map((m) => <option key={m.clave} value={m.clave}>{m.nombre}{m.recargo ? ` (+${m.recargo}%)` : ''}</option>)}
-              </select>
+              <Selector valor={f.medio_pago_previsto} onChange={(v) => { set('medio_pago_previsto', v); set('recargo_pct', ''); }} placeholder="Sin definir"
+                opciones={[{ valor: '', nombre: 'Sin definir' }, ...(config?.medios_pago || []).map((m) => ({ valor: m.clave, nombre: m.recargo ? `${m.nombre} (+${m.recargo}%)` : m.nombre, detalle: m.detalle, icono: <span>{ICONO_MEDIO[m.clave] || '💳'}</span> }))]} />
             </Campo>
             <Campo etiqueta="Recargo manual %"><input className="campo" inputMode="numeric" placeholder={String(medio?.recargo || 0)} value={f.recargo_pct} onChange={(e) => set('recargo_pct', e.target.value)} /></Campo>
             {!id ? (

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   usuario TEXT NOT NULL UNIQUE,
   nombre TEXT NOT NULL,
   clave_hash TEXT NOT NULL,
-  rol TEXT NOT NULL CHECK (rol IN ('admin','trabajador')),
+  rol TEXT NOT NULL CHECK (rol IN ('admin','trabajador','domiciliario')),
   activo INTEGER NOT NULL DEFAULT 1,
   creado_en TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS domiciliarios (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL,
   telefono TEXT,
-  activo INTEGER NOT NULL DEFAULT 1
+  activo INTEGER NOT NULL DEFAULT 1,
+  usuario_id INTEGER REFERENCES usuarios(id)
 );
 CREATE TABLE IF NOT EXISTS clientes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,6 +181,24 @@ CREATE TABLE IF NOT EXISTS config (
   valor TEXT NOT NULL
 );
 `);
+
+// --- migraciones sobre bases ya creadas --------------------------------------
+{
+  const sqlUsuarios = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'usuarios'").get()?.sql || '';
+  if (!sqlUsuarios.includes('domiciliario')) {
+    // El CHECK del rol no se altera en SQLite: se reconstruye la tabla.
+    db.exec(`PRAGMA foreign_keys = OFF; BEGIN;
+      CREATE TABLE usuarios_nueva (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario TEXT NOT NULL UNIQUE, nombre TEXT NOT NULL, clave_hash TEXT NOT NULL,
+        rol TEXT NOT NULL CHECK (rol IN ('admin','trabajador','domiciliario')), activo INTEGER NOT NULL DEFAULT 1,
+        creado_en TEXT NOT NULL DEFAULT (datetime('now')));
+      INSERT INTO usuarios_nueva SELECT id, usuario, nombre, clave_hash, rol, activo, creado_en FROM usuarios;
+      DROP TABLE usuarios; ALTER TABLE usuarios_nueva RENAME TO usuarios;
+      COMMIT; PRAGMA foreign_keys = ON;`);
+  }
+  const cols = db.prepare('PRAGMA table_info(domiciliarios)').all().map((c) => c.name);
+  if (!cols.includes('usuario_id')) db.exec('ALTER TABLE domiciliarios ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)');
+}
 
 // --- helpers -----------------------------------------------------------------
 export function uno(sql, ...params) { return db.prepare(sql).get(...params); }

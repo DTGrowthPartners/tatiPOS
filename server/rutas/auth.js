@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { uno, correr, todos } from '../db.js';
-import { verificarClave, crearSesion, cookieSesion, cookieBorrada, cerrarSesion, usuarioDeSesion, requiere, hashClave } from '../auth.js';
+import { verificarClave, crearSesion, cookieSesion, cookieBorrada, cerrarSesion, usuarioDeSesion, requiere, hashClave, CUALQUIERA } from '../auth.js';
 import { limpiar } from '../util.js';
 
 export const rutas = Router();
@@ -11,9 +11,15 @@ rutas.post('/login', (req, res) => {
   if (!u || !verificarClave(clave, u.clave_hash)) {
     return res.status(401).json({ error: 'Usuario o clave incorrectos' });
   }
+  let domiciliario_id = null;
+  if (u.rol === 'domiciliario') {
+    const d = uno('SELECT id FROM domiciliarios WHERE usuario_id = ? AND activo = 1', u.id);
+    if (!d) return res.status(403).json({ error: 'Su cuenta de domiciliario está deshabilitada' });
+    domiciliario_id = d.id;
+  }
   const token = crearSesion(u.id, req.headers['user-agent']);
   res.setHeader('set-cookie', cookieSesion(token, req));
-  res.json({ ok: true, usuario: { id: u.id, usuario: u.usuario, nombre: u.nombre, rol: u.rol } });
+  res.json({ ok: true, usuario: { id: u.id, usuario: u.usuario, nombre: u.nombre, rol: u.rol, domiciliario_id } });
 });
 
 rutas.post('/logout', (req, res) => {
@@ -24,10 +30,10 @@ rutas.post('/logout', (req, res) => {
 
 rutas.get('/sesion', (req, res) => {
   const u = usuarioDeSesion(req);
-  res.json({ autenticado: Boolean(u), usuario: u ? { id: u.id, usuario: u.usuario, nombre: u.nombre, rol: u.rol } : null });
+  res.json({ autenticado: Boolean(u), usuario: u ? { id: u.id, usuario: u.usuario, nombre: u.nombre, rol: u.rol, domiciliario_id: u.domiciliario_id } : null });
 });
 
-rutas.post('/clave', requiere(), (req, res) => {
+rutas.post('/clave', requiere(...CUALQUIERA), (req, res) => {
   const { actual, nueva } = req.body || {};
   const u = uno('SELECT * FROM usuarios WHERE id = ?', req.usuario.id);
   if (!verificarClave(actual, u.clave_hash)) return res.status(400).json({ error: 'La clave actual no coincide' });
@@ -38,7 +44,7 @@ rutas.post('/clave', requiere(), (req, res) => {
 
 // --- usuarios (admin) --------------------------------------------------------
 rutas.get('/usuarios', requiere('admin'), (_req, res) => {
-  res.json(todos('SELECT id, usuario, nombre, rol, activo, creado_en FROM usuarios ORDER BY id'));
+  res.json(todos("SELECT id, usuario, nombre, rol, activo, creado_en FROM usuarios WHERE rol <> 'domiciliario' ORDER BY id"));
 });
 rutas.post('/usuarios', requiere('admin'), (req, res) => {
   const { usuario, nombre, clave, rol } = req.body || {};

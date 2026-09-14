@@ -14,8 +14,9 @@ import { guardarPedido, pedidoCompleto, upsertCliente } from './pedidos.js';
 export const rutas = Router();
 
 // --- configuración -----------------------------------------------------------------
-rutas.get('/config', requiere(), (req, res) => {
+rutas.get('/config', requiere('admin', 'trabajador', 'domiciliario'), (req, res) => {
   const cfg = configCompleta();
+  if (req.usuario.rol === 'domiciliario') return res.json({ negocio: cfg.negocio, franjas: cfg.franjas, guia: cfg.guia, canales: [], ocasiones: cfg.ocasiones, medios_pago: cfg.medios_pago.map((m) => ({ clave: m.clave, nombre: m.nombre, recargo: m.recargo })), seguimientos: { activo: false } });
   if (req.usuario.rol !== 'admin') {
     // el trabajador solo necesita lo operativo, nunca llaves
     const { whatsapp, integracion_bot, ...resto } = cfg;

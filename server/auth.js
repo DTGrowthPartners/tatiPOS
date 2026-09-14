@@ -39,10 +39,12 @@ function leerCookie(req) {
 export function usuarioDeSesion(req) {
   const token = leerCookie(req);
   if (!token) return null;
-  const s = uno(`SELECT u.id, u.usuario, u.nombre, u.rol, u.activo, s.expira_en
+  const s = uno(`SELECT u.id, u.usuario, u.nombre, u.rol, u.activo, s.expira_en,
+                        (SELECT d.id FROM domiciliarios d WHERE d.usuario_id = u.id AND d.activo = 1) AS domiciliario_id
                  FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id WHERE s.token = ?`, token);
   if (!s || !s.activo || s.expira_en < new Date().toISOString()) return null;
-  return { id: s.id, usuario: s.usuario, nombre: s.nombre, rol: s.rol, token };
+  if (s.rol === 'domiciliario' && !s.domiciliario_id) return null; // cuenta de domiciliario deshabilitada
+  return { id: s.id, usuario: s.usuario, nombre: s.nombre, rol: s.rol, token, domiciliario_id: s.domiciliario_id || null };
 }
 
 export function cerrarSesion(req) {
@@ -50,16 +52,18 @@ export function cerrarSesion(req) {
   if (token) correr('DELETE FROM sesiones WHERE token = ?', token);
 }
 
-/** Middleware: exige sesión; con rol, exige ese rol. */
-export function requiere(rol) {
+/** Middleware: exige sesión; con roles, exige uno de ellos. Sin roles = admin o trabajador (no domiciliario). */
+export function requiere(...roles) {
+  const permitidos = roles.length ? roles : ['admin', 'trabajador'];
   return (req, res, next) => {
     const u = usuarioDeSesion(req);
     if (!u) return res.status(401).json({ error: 'Inicie sesión' });
-    if (rol && u.rol !== rol) return res.status(403).json({ error: 'Solo el administrador puede hacer esto' });
+    if (!permitidos.includes(u.rol)) return res.status(403).json({ error: u.rol === 'domiciliario' ? 'Esta parte no es para domiciliarios' : 'Solo el administrador puede hacer esto' });
     req.usuario = u;
     next();
   };
 }
+export const CUALQUIERA = ['admin', 'trabajador', 'domiciliario'];
 
 // Limpieza de sesiones vencidas al arrancar
 db.exec(`DELETE FROM sesiones WHERE expira_en < '${new Date().toISOString()}'`);

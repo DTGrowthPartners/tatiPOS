@@ -12,7 +12,7 @@ const COLORES = ['#E84090', '#F56BAA', '#FF9CC6', '#A81E60', '#FFC6DE', '#7E174A
 
 export default function Reportes() {
   const { config } = useSesion();
-  const [desde, setDesde] = useState(sumarDias(hoy(), -29));
+  const [desde, setDesde] = useState(hoy());
   const [hasta, setHasta] = useState(hoy());
   const [r, setR] = useState<Reporte | null>(null);
   useEffect(() => { setR(null); api.reportes(desde, hasta).then(setR); }, [desde, hasta]);

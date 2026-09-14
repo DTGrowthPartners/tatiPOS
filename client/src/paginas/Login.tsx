@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { api, type Usuario } from '../api';
 
 export default function Login({ alEntrar }: { alEntrar: (u: Usuario) => void }) {
@@ -6,6 +7,7 @@ export default function Login({ alEntrar }: { alEntrar: (u: Usuario) => void }) 
   const [clave, setClave] = useState('');
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [ver, setVer] = useState(false);
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
@@ -29,7 +31,10 @@ export default function Login({ alEntrar }: { alEntrar: (u: Usuario) => void }) 
         </label>
         <label className="block">
           <span className="etiqueta">Clave</span>
-          <input className="campo" type="password" value={clave} onChange={(e) => setClave(e.target.value)} autoComplete="current-password" required />
+          <span className="relative block">
+            <input className="campo pr-11" type={ver ? 'text' : 'password'} value={clave} onChange={(e) => setClave(e.target.value)} autoComplete="current-password" required />
+            <button type="button" onClick={() => setVer(!ver)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-tinta/50 hover:bg-rosa-100 cursor-pointer" aria-label={ver ? 'Ocultar clave' : 'Ver clave'}>{ver ? <EyeOff className="size-5" /> : <Eye className="size-5" />}</button>
+          </span>
         </label>
         {error ? <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{error}</p> : null}
         <button className="boton-primario w-full py-3" disabled={cargando}>{cargando ? 'Entrando…' : 'Entrar'}</button>

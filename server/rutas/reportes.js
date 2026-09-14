@@ -30,7 +30,7 @@ function datosReporte(desde, hasta) {
   const clientesTop = todos(`SELECT c.id, c.nombre, c.telefono, COUNT(p.id) AS pedidos, COALESCE(SUM(p.total),0) AS ventas FROM pedidos p JOIN clientes c ON c.id = p.cliente_id
       WHERE p.fecha_entrega >= ? AND p.fecha_entrega <= ? AND p.estado <> 'cancelado' GROUP BY c.id ORDER BY ventas DESC LIMIT 15`, desde, hasta);
   const nuevosClientes = uno(`SELECT COUNT(*) AS n FROM clientes WHERE substr(creado_en,1,10) >= ? AND substr(creado_en,1,10) <= ?`, desde, hasta).n;
-  const puntualidad = uno(`SELECT COUNT(*) AS entregados, SUM(CASE WHEN evidencia_foto IS NOT NULL THEN 1 ELSE 0 END) AS con_foto ${base} AND estado = 'entregado'`, desde, hasta);
+  const puntualidad = uno(`SELECT COUNT(*) AS entregados, COALESCE(SUM(CASE WHEN evidencia_foto IS NOT NULL THEN 1 ELSE 0 END),0) AS con_foto ${base} AND estado = 'entregado'`, desde, hasta);
   return { desde, hasta, totales, porDia, porSemana, porCanal, porOrigen, porEstado, porOcasion, porMedio, productos, porZona, clientesTop, nuevosClientes, puntualidad };
 }
 
