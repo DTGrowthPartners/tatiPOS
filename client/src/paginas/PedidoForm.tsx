@@ -64,6 +64,17 @@ export default function PedidoForm() {
   }, [f.cliente_telefono, f.cliente_nombre, id]);
 
   const set = (k: keyof Form, v: string | boolean) => setF((a) => ({ ...a, [k]: v }));
+  // Al elegir un cliente conocido, su dirección predeterminada llena la entrega
+  // (solo si la entrega está vacía: lo que ya se escribió manda).
+  const usarCliente = (c: Cliente) => {
+    setF((a) => ({
+      ...a, cliente_nombre: c.nombre || a.cliente_nombre, cliente_telefono: c.telefono || a.cliente_telefono, cliente_email: c.email || '',
+      ...(c.direccion && !a.direccion ? { direccion: c.direccion, punto_referencia: c.punto_referencia || a.punto_referencia, zona_id: c.zona_id ? String(c.zona_id) : a.zona_id, zona_nombre: c.zona_nombre || a.zona_nombre, domicilio_valor: '' } : {}),
+    }));
+    if (c.direccion && c.zona_nombre) setBuscaZona(c.zona_nombre);
+    setSugerencias([]);
+    if (c.direccion) avisar(`Dirección de ${c.nombre?.split(' ')[0] || 'cliente'} precargada: ${c.direccion}`, 'info');
+  };
   const categorias = useMemo(() => { const s = new Set<string>(); productos.forEach((p) => String(p.categoria || '').split(',').forEach((c) => c.trim() && s.add(c.trim()))); return [...s].sort(); }, [productos]);
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -241,8 +252,8 @@ export default function PedidoForm() {
             {sugerencias.length ? (
               <div className="mt-2 rounded-xl border border-rosa-200 bg-rosa-50 divide-y divide-rosa-100">
                 {sugerencias.map((c) => (
-                  <button key={c.id} type="button" onClick={() => { setF((a) => ({ ...a, cliente_nombre: c.nombre || a.cliente_nombre, cliente_telefono: c.telefono || a.cliente_telefono, cliente_email: c.email || '' })); setSugerencias([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-rosa-100 cursor-pointer flex justify-between">
-                    <span><b>{c.nombre || 'Sin nombre'}</b> · {telefonoBonito(c.telefono)}</span><span className="text-xs text-tinta/60">{c.pedidos as number} pedidos · {pesos(c.valor)}</span>
+                  <button key={c.id} type="button" onClick={() => usarCliente(c)} className="w-full text-left px-3 py-2 text-sm hover:bg-rosa-100 cursor-pointer flex justify-between gap-2">
+                    <span className="min-w-0"><b>{c.nombre || 'Sin nombre'}</b> · {telefonoBonito(c.telefono)}{c.direccion ? <span className="block text-xs text-tinta/60 truncate">📍 {c.zona_nombre ? `${c.zona_nombre} · ` : ''}{c.direccion}</span> : null}</span><span className="text-xs text-tinta/60 shrink-0">{c.pedidos as number} pedidos · {pesos(c.valor)}</span>
                   </button>
                 ))}
               </div>

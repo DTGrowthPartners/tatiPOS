@@ -141,3 +141,28 @@ export function Selector({ valor, opciones, onChange, placeholder = 'Elegir…',
     </div>
   );
 }
+
+// --- Buscador de zona/barrio (autocompleta con la tarifa) ---------------------------
+export function CampoZona({ zonas, valor, zonaId, onChange, placeholder = 'Escriba el barrio…' }: {
+  zonas: { id: number; zona: string; precio: number | null }[]; valor: string; zonaId: string;
+  onChange: (d: { zona_id: string; zona_nombre: string; precio: number | null }) => void; placeholder?: string;
+}) {
+  const [foco, setFoco] = useState(false);
+  const q = valor.trim().toLowerCase();
+  const lista = q.length < 2 || zonaId ? [] : zonas.filter((z) => z.zona.toLowerCase().includes(q)).slice(0, 8);
+  return (
+    <div className="relative">
+      <input className="campo" placeholder={placeholder} value={valor} onFocus={() => setFoco(true)} onBlur={() => setTimeout(() => setFoco(false), 150)}
+        onChange={(e) => onChange({ zona_id: '', zona_nombre: e.target.value, precio: null })} />
+      {foco && lista.length ? (
+        <div className="absolute z-20 left-0 right-0 mt-1 tarjeta divide-y divide-rosa-50 max-h-56 overflow-y-auto shadow-xl">
+          {lista.map((z) => (
+            <button key={z.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { onChange({ zona_id: String(z.id), zona_nombre: z.zona, precio: z.precio }); setFoco(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-rosa-50 cursor-pointer flex justify-between">
+              <span>{z.zona}</span><b className="text-rosa-600">{z.precio == null ? 'sin tarifa' : '$' + z.precio.toLocaleString('es-CO')}</b>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}

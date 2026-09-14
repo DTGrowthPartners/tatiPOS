@@ -27,7 +27,7 @@ export type Config = {
   seguimientos: { activo: boolean; confirmacion: boolean; entrega: boolean; pago_pendiente: boolean; pago_pendiente_horas: number; recompra: boolean; recompra_dias_antes: number; plantillas: Record<string, string> };
   whatsapp?: { url: string; apikey: string; instancia: string }; integracion_bot?: { apikey: string }; guia: { nota: string };
 };
-export type Cliente = { id: number; telefono: string | null; nombre: string | null; email: string | null; notas: string | null; creado_en: string; pedidos?: number | Pedido[]; valor?: number; ultimo_pedido?: string | null; primer_pedido?: string | null; fechas?: { id: number; tipo: string; dia_mes: string; descripcion: string | null }[]; destinatarios?: { recibe_nombre: string; direccion: string; zona_nombre: string; veces: number }[] };
+export type Cliente = { id: number; telefono: string | null; nombre: string | null; email: string | null; notas: string | null; direccion?: string | null; punto_referencia?: string | null; zona_id?: number | null; zona_nombre?: string | null; creado_en: string; pedidos?: number | Pedido[]; valor?: number; ultimo_pedido?: string | null; primer_pedido?: string | null; fechas?: { id: number; tipo: string; dia_mes: string; descripcion: string | null }[]; destinatarios?: { recibe_nombre: string; direccion: string; zona_nombre: string; veces: number }[] };
 
 export class ErrorApi extends Error { estado: number; constructor(estado: number, mensaje: string) { super(mensaje); this.estado = estado; } }
 
@@ -82,7 +82,7 @@ export const api = {
   editarDomiciliario: (id: number, d: Partial<{ nombre: string; telefono: string; activo: boolean }>) => pedir<Domiciliario>(`/domiciliarios/${id}`, json('PUT', d)),
   clientes: (q = '') => pedir<Cliente[]>(`/clientes${qs({ q })}`),
   cliente: (id: number) => pedir<Cliente & { pedidos: Pedido[] }>(`/clientes/${id}`),
-  crearCliente: (d: { nombre: string; telefono: string; email?: string; notas?: string }) => pedir<Cliente>('/clientes', json('POST', d)),
+  crearCliente: (d: { nombre: string; telefono: string; email?: string; notas?: string; direccion?: string; punto_referencia?: string; zona_id?: number | null; zona_nombre?: string }) => pedir<Cliente>('/clientes', json('POST', d)),
   editarCliente: (id: number, d: Partial<Cliente>) => pedir<Cliente>(`/clientes/${id}`, json('PUT', d)),
   agregarFecha: (id: number, d: { tipo: string; dia_mes: string; descripcion: string }) => pedir(`/clientes/${id}/fechas`, json('POST', d)),
   quitarFecha: (id: number, fid: number) => pedir(`/clientes/${id}/fechas/${fid}`, { method: 'DELETE' }),

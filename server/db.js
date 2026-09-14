@@ -60,6 +60,10 @@ CREATE TABLE IF NOT EXISTS clientes (
   nombre TEXT,
   email TEXT,
   notas TEXT,
+  direccion TEXT,
+  punto_referencia TEXT,
+  zona_id INTEGER REFERENCES zonas(id),
+  zona_nombre TEXT,
   creado_en TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS pedidos (
@@ -195,6 +199,10 @@ CREATE TABLE IF NOT EXISTS config (
       INSERT INTO usuarios_nueva SELECT id, usuario, nombre, clave_hash, rol, activo, creado_en FROM usuarios;
       DROP TABLE usuarios; ALTER TABLE usuarios_nueva RENAME TO usuarios;
       COMMIT; PRAGMA foreign_keys = ON;`);
+  }
+  const colsCli = db.prepare('PRAGMA table_info(clientes)').all().map((c) => c.name);
+  for (const [col, tipo] of [['direccion', 'TEXT'], ['punto_referencia', 'TEXT'], ['zona_id', 'INTEGER REFERENCES zonas(id)'], ['zona_nombre', 'TEXT']]) {
+    if (!colsCli.includes(col)) db.exec(`ALTER TABLE clientes ADD COLUMN ${col} ${tipo}`);
   }
   const cols = db.prepare('PRAGMA table_info(domiciliarios)').all().map((c) => c.name);
   if (!cols.includes('usuario_id')) db.exec('ALTER TABLE domiciliarios ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)');

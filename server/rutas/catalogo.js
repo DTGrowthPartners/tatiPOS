@@ -175,7 +175,10 @@ rutas.post('/clientes', (req, res) => {
   const nombre = limpiar(b.nombre, 80);
   if (!tel && !nombre) return res.status(400).json({ error: 'Ponga al menos el teléfono o el nombre' });
   if (tel && uno('SELECT id FROM clientes WHERE telefono = ?', tel)) return res.status(400).json({ error: 'Ya existe un cliente con ese teléfono' });
-  const r = correr('INSERT INTO clientes(telefono, nombre, email, notas) VALUES (?,?,?,?)', tel || null, nombre || null, limpiar(b.email, 120) || null, limpiar(b.notas, 800) || null);
+  const zona = b.zona_id ? uno('SELECT * FROM zonas WHERE id = ?', Number(b.zona_id)) : null;
+  const r = correr('INSERT INTO clientes(telefono, nombre, email, notas, direccion, punto_referencia, zona_id, zona_nombre) VALUES (?,?,?,?,?,?,?,?)',
+    tel || null, nombre || null, limpiar(b.email, 120) || null, limpiar(b.notas, 800) || null,
+    limpiar(b.direccion, 200) || null, limpiar(b.punto_referencia, 200) || null, zona?.id ?? null, zona?.zona ?? (limpiar(b.zona_nombre, 80) || null));
   res.json(uno('SELECT * FROM clientes WHERE id = ?', Number(r.lastInsertRowid)));
 });
 rutas.get('/clientes/:id', (req, res) => {
@@ -193,6 +196,11 @@ rutas.put('/clientes/:id', (req, res) => {
   if (!c) return res.status(404).json({ error: 'No existe' });
   const b = req.body || {};
   correr('UPDATE clientes SET nombre = ?, email = ?, notas = ? WHERE id = ?', limpiar(b.nombre, 80) || c.nombre, b.email === undefined ? c.email : (limpiar(b.email, 120) || null), b.notas === undefined ? c.notas : (limpiar(b.notas, 800) || null), c.id);
+  if (b.direccion !== undefined || b.zona_id !== undefined || b.punto_referencia !== undefined) {
+    const zona = b.zona_id ? uno('SELECT * FROM zonas WHERE id = ?', Number(b.zona_id)) : null;
+    correr('UPDATE clientes SET direccion = ?, punto_referencia = ?, zona_id = ?, zona_nombre = ? WHERE id = ?',
+      limpiar(b.direccion, 200) || null, limpiar(b.punto_referencia, 200) || null, zona?.id ?? null, zona?.zona ?? (limpiar(b.zona_nombre, 80) || null), c.id);
+  }
   res.json(uno('SELECT * FROM clientes WHERE id = ?', c.id));
 });
 rutas.post('/clientes/:id/fechas', (req, res) => {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, type Cliente, type Pedido } from '../api';
+import { api, type Cliente, type Pedido, type Zona } from '../api';
 import { useSesion } from '../App';
-import { Cargando, Encabezado, Insignia, Campo, Stat, useToast } from '../componentes/ui';
+import { Cargando, Encabezado, Insignia, Campo, CampoZona, Stat, useToast } from '../componentes/ui';
 import { pesos, telefonoBonito, relativa, enlaceWa } from '../lib/formato';
 import { ESTADO, type Estado } from '../lib/estados';
 
@@ -11,9 +11,11 @@ export default function ClienteDetalle() {
   const { config } = useSesion();
   const { avisar } = useToast();
   const [c, setC] = useState<(Cliente & { pedidos: Pedido[] }) | null>(null);
-  const [edit, setEdit] = useState({ nombre: '', email: '', notas: '' });
+  const [edit, setEdit] = useState({ nombre: '', email: '', notas: '', direccion: '', punto_referencia: '', zona_id: '', zona_nombre: '' });
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  useEffect(() => { api.zonas().then(setZonas); }, []);
   const [fecha, setFecha] = useState({ tipo: 'cumpleanos', dia: '', mes: '', descripcion: '' });
-  const cargar = () => api.cliente(Number(id)).then((x) => { setC(x); setEdit({ nombre: x.nombre || '', email: x.email || '', notas: x.notas || '' }); });
+  const cargar = () => api.cliente(Number(id)).then((x) => { setC(x); setEdit({ nombre: x.nombre || '', email: x.email || '', notas: x.notas || '', direccion: x.direccion || '', punto_referencia: x.punto_referencia || '', zona_id: x.zona_id ? String(x.zona_id) : '', zona_nombre: x.zona_nombre || '' }); });
   useEffect(() => { cargar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!c) return <Cargando />;
   const pedidos = c.pedidos;
@@ -36,7 +38,13 @@ export default function ClienteDetalle() {
           <Campo etiqueta="Nombre"><input className="campo" value={edit.nombre} onChange={(e) => setEdit({ ...edit, nombre: e.target.value })} /></Campo>
           <Campo etiqueta="Correo"><input className="campo" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Campo>
           <Campo etiqueta="Notas"><textarea className="campo" rows={3} value={edit.notas} onChange={(e) => setEdit({ ...edit, notas: e.target.value })} placeholder="Preferencias, alergias, cómo le gusta la tarjeta…" /></Campo>
-          <button onClick={() => api.editarCliente(c.id, edit).then(() => { avisar('Guardado'); cargar(); }).catch((e) => avisar(e.message, 'error'))} className="boton-secundario w-full">Guardar</button>
+          <div className="rounded-xl border border-rosa-100 bg-rosa-50/50 p-3 space-y-3">
+            <p className="text-xs font-semibold text-tinta/70">📍 Dirección predeterminada para domicilios</p>
+            <Campo etiqueta="Barrio / zona"><CampoZona zonas={zonas} valor={edit.zona_nombre} zonaId={edit.zona_id} onChange={(z) => setEdit({ ...edit, zona_id: z.zona_id, zona_nombre: z.zona_nombre })} /></Campo>
+            <Campo etiqueta="Dirección"><input className="campo" value={edit.direccion} onChange={(e) => setEdit({ ...edit, direccion: e.target.value })} /></Campo>
+            <Campo etiqueta="Punto de referencia"><input className="campo" value={edit.punto_referencia} onChange={(e) => setEdit({ ...edit, punto_referencia: e.target.value })} /></Campo>
+          </div>
+          <button onClick={() => api.editarCliente(c.id, { ...edit, zona_id: edit.zona_id ? Number(edit.zona_id) : null }).then(() => { avisar('Guardado'); cargar(); }).catch((e) => avisar(e.message, 'error'))} className="boton-secundario w-full">Guardar</button>
           {c.destinatarios?.length ? (
             <div><h3 className="text-xs font-semibold text-tinta/50 uppercase mt-2 mb-1">Suele enviar a</h3>
               <ul className="text-sm space-y-1">{c.destinatarios.map((d, i) => <li key={i}>👤 <b>{d.recibe_nombre}</b> · {d.zona_nombre || ''} {d.direccion || ''} <span className="text-tinta/40">×{d.veces}</span></li>)}</ul></div>

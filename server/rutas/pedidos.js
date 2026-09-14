@@ -176,6 +176,11 @@ export function guardarPedido(cuerpo, usuarioId, existente = null) {
     recalcularPago(id);
     const p = uno('SELECT * FROM pedidos WHERE id = ?', id);
     seg.registrarFechaImportante(p);
+    // La primera dirección de domicilio del cliente queda como su predeterminada.
+    if (p.cliente_id && p.tipo_entrega === 'domicilio' && p.direccion) {
+      const c = uno('SELECT direccion FROM clientes WHERE id = ?', p.cliente_id);
+      if (c && !c.direccion) correr('UPDATE clientes SET direccion = ?, punto_referencia = ?, zona_id = ?, zona_nombre = ? WHERE id = ?', p.direccion, p.punto_referencia, p.zona_id, p.zona_nombre, p.cliente_id);
+    }
     return id;
   });
 }

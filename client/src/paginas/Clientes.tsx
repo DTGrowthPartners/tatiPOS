@@ -1,30 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus } from 'lucide-react';
-import { api, type Cliente } from '../api';
-import { Cargando, Encabezado, Vacio, Modal, Campo, useToast } from '../componentes/ui';
+import { api, type Cliente, type Zona } from '../api';
+import { Cargando, Encabezado, Vacio, Modal, Campo, CampoZona, useToast } from '../componentes/ui';
 import { pesos, telefonoBonito, relativa, iniciales } from '../lib/formato';
 
 export default function Clientes() {
   const [q, setQ] = useState('');
   const [lista, setLista] = useState<Cliente[] | null>(null);
-  const [nuevo, setNuevo] = useState<null | { nombre: string; telefono: string; email: string; notas: string }>(null);
+  const [nuevo, setNuevo] = useState<null | { nombre: string; telefono: string; email: string; notas: string; direccion: string; punto_referencia: string; zona_id: string; zona_nombre: string }>(null);
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  useEffect(() => { api.zonas().then(setZonas); }, []);
   const nav = useNavigate();
   const { avisar } = useToast();
   useEffect(() => { const t = setTimeout(() => api.clientes(q).then(setLista), 250); return () => clearTimeout(t); }, [q]);
   async function crear() {
     if (!nuevo) return;
-    try { const c = await api.crearCliente(nuevo); avisar('Cliente creado'); setNuevo(null); nav(`/clientes/${c.id}`); } catch (e) { avisar((e as Error).message, 'error'); }
+    try { const c = await api.crearCliente({ ...nuevo, zona_id: nuevo.zona_id ? Number(nuevo.zona_id) : null }); avisar('Cliente creado'); setNuevo(null); nav(`/clientes/${c.id}`); } catch (e) { avisar((e as Error).message, 'error'); }
   }
   return (
     <div>
-      <Encabezado titulo="Clientes" sub="Se llena solo con cada pedido: historial, valor y fechas importantes" acciones={<button onClick={() => setNuevo({ nombre: '', telefono: '', email: '', notas: '' })} className="boton-primario"><Plus className="size-4" /> Cliente</button>} />
+      <Encabezado titulo="Clientes" sub="Se llena solo con cada pedido: historial, valor y fechas importantes" acciones={<button onClick={() => setNuevo({ nombre: '', telefono: '', email: '', notas: '', direccion: '', punto_referencia: '', zona_id: '', zona_nombre: '' })} className="boton-primario"><Plus className="size-4" /> Cliente</button>} />
       <Modal abierto={Boolean(nuevo)} cerrar={() => setNuevo(null)} titulo="Nuevo cliente">
         {nuevo ? (
           <div className="space-y-3">
             <Campo etiqueta="Nombre"><input className="campo" value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} autoFocus /></Campo>
             <Campo etiqueta="Teléfono (WhatsApp)"><input className="campo" inputMode="tel" value={nuevo.telefono} onChange={(e) => setNuevo({ ...nuevo, telefono: e.target.value })} /></Campo>
             <Campo etiqueta="Correo (opcional)"><input className="campo" type="email" value={nuevo.email} onChange={(e) => setNuevo({ ...nuevo, email: e.target.value })} /></Campo>
+            <div className="rounded-xl border border-rosa-100 bg-rosa-50/50 p-3 space-y-3">
+              <p className="text-xs font-semibold text-tinta/70">📍 Dirección predeterminada para domicilios <span className="font-normal text-tinta/50">(se precarga en cada pedido; se puede cambiar ahí)</span></p>
+              <Campo etiqueta="Barrio / zona"><CampoZona zonas={zonas} valor={nuevo.zona_nombre} zonaId={nuevo.zona_id} onChange={(z) => setNuevo({ ...nuevo, zona_id: z.zona_id, zona_nombre: z.zona_nombre })} /></Campo>
+              <Campo etiqueta="Dirección"><input className="campo" value={nuevo.direccion} onChange={(e) => setNuevo({ ...nuevo, direccion: e.target.value })} /></Campo>
+              <Campo etiqueta="Punto de referencia"><input className="campo" value={nuevo.punto_referencia} onChange={(e) => setNuevo({ ...nuevo, punto_referencia: e.target.value })} /></Campo>
+            </div>
             <Campo etiqueta="Notas"><textarea className="campo" rows={2} value={nuevo.notas} onChange={(e) => setNuevo({ ...nuevo, notas: e.target.value })} /></Campo>
             <button onClick={crear} className="boton-primario w-full py-3">Guardar cliente</button>
           </div>
