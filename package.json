@@ -1,0 +1,22 @@
+{
+  "name": "tatipos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TatiPOS · Sistema de pedidos y operación de Floristería Tati Ramos",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "build": "cd client && npm run build",
+    "seed": "node scripts/importar_catalogo.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "multer": "^2.4.0"
+  }
+}

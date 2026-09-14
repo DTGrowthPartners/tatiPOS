@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-rosa-50: #FFF5F9;
+  --color-rosa-100: #FFE4EF;
+  --color-rosa-200: #FFC6DE;
+  --color-rosa-300: #FF9CC6;
+  --color-rosa-400: #F56BAA;
+  --color-rosa-500: #E84090;
+  --color-rosa-600: #CF2A79;
+  --color-rosa-700: #A81E60;
+  --color-rosa-800: #7E174A;
+  --color-rosa-900: #5A1136;
+  --color-tinta: #2B1A24;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { @apply bg-rosa-50 text-tinta antialiased; padding-bottom: env(safe-area-inset-bottom); }
+input, select, textarea, button { font: inherit; }
+input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+
+@layer components {
+.tarjeta { @apply bg-white rounded-2xl border border-rosa-100 shadow-[0_1px_3px_rgba(232,64,144,0.06)]; }
+.campo { @apply w-full rounded-xl border border-rosa-200 bg-white px-3 py-2.5 text-[15px] text-tinta placeholder:text-tinta/40 focus:outline-none focus:ring-2 focus:ring-rosa-300 focus:border-rosa-400 disabled:bg-rosa-50 disabled:text-tinta/50; }
+.etiqueta { @apply block text-xs font-semibold text-tinta/60 uppercase tracking-wide mb-1; }
+.boton { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]; }
+.boton-primario { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] bg-rosa-500 text-white hover:bg-rosa-600 shadow-[0_2px_8px_rgba(232,64,144,0.3)]; }
+.boton-secundario { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] bg-white text-rosa-700 border border-rosa-200 hover:bg-rosa-50; }
+.boton-suave { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] bg-rosa-100 text-rosa-700 hover:bg-rosa-200; }
+.boton-peligro { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] bg-red-50 text-red-700 border border-red-200 hover:bg-red-100; }
+.boton-fantasma { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] text-tinta/70 hover:bg-rosa-100/60; }
+.insignia { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap; }
+}
+
+@media print {
+  body { background: white; padding: 0; }
+  .no-imprimir { display: none !important; }
+  .tarjeta { box-shadow: none; border: 1px solid #ddd; }
+}
