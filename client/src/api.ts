@@ -79,7 +79,7 @@ export const api = {
   crearDomiciliario: (d: { nombre: string; telefono?: string; usuario?: string; clave?: string }) => pedir<Domiciliario>('/domiciliarios', json('POST', d)),
   cuentaDomiciliario: (id: number, d: { usuario?: string; clave: string }) => pedir<Domiciliario>(`/domiciliarios/${id}/cuenta`, json('POST', d)),
   misEntregas: () => pedir<Pedido[]>('/pedidos/mis-entregas'),
-  editarDomiciliario: (id: number, d: Partial<{ nombre: string; telefono: string; activo: boolean }>) => pedir<Domiciliario>(`/domiciliarios/${id}`, json('PUT', d)),
+  editarDomiciliario: (id: number, d: Partial<{ nombre: string; telefono: string; activo: boolean; usuario: string; clave: string; clave_telefono: boolean }>) => pedir<Domiciliario>(`/domiciliarios/${id}`, json('PUT', d)),
   clientes: (q = '') => pedir<Cliente[]>(`/clientes${qs({ q })}`),
   cliente: (id: number) => pedir<Cliente & { pedidos: Pedido[] }>(`/clientes/${id}`),
   crearCliente: (d: { nombre: string; telefono: string; email?: string; notas?: string; direccion?: string; punto_referencia?: string; zona_id?: number | null; zona_nombre?: string }) => pedir<Cliente>('/clientes', json('POST', d)),

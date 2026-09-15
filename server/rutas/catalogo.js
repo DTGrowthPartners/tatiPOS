@@ -6,7 +6,7 @@ import { uno, todos, correr } from '../db.js';
 import { requiere, hashClave } from '../auth.js';
 import { transaccion } from '../db.js';
 import { DIR_FOTOS } from '../config.js';
-import { limpiar, entero, telefonoNormal } from '../util.js';
+import { limpiar, entero, telefonoNormal, soloDigitos } from '../util.js';
 
 export const rutas = Router();
 rutas.use(requiere());
@@ -109,8 +109,14 @@ rutas.get('/domiciliarios', (req, res) => {
       (SELECT COUNT(*) FROM pedidos p WHERE p.domiciliario_id = d.id AND p.estado IN ('confirmado','preparacion','listo','en_ruta')) AS pendientes
       FROM domiciliarios d LEFT JOIN usuarios u ON u.id = d.usuario_id ${req.query.todos === '1' ? '' : 'WHERE d.activo = 1'} ORDER BY d.activo DESC, d.nombre`));
 });
+/** Clave por defecto de un domiciliario: su teléfono tal como lo conoce (10 dígitos, sin el 57). */
+function claveDesdeTelefono(t) {
+  const d = soloDigitos(t);
+  return d.length === 12 && d.startsWith('57') ? d.slice(2) : d;
+}
+function usuarioNormal(usuario) { return limpiar(usuario, 60).toLowerCase().replace(/\s+/g, ''); }
 function crearCuenta(d, usuario, clave) {
-  const u = limpiar(usuario, 60).toLowerCase().replace(/\s+/g, '');
+  const u = usuarioNormal(usuario);
   if (!u) throw new Error('Falta el usuario para la cuenta');
   if (String(clave || '').length < 6) throw new Error('La clave debe tener al menos 6 caracteres');
   if (uno('SELECT id FROM usuarios WHERE lower(usuario) = ?', u)) throw new Error('Ese usuario ya existe');
@@ -124,7 +130,7 @@ rutas.post('/domiciliarios', requiere('admin'), (req, res) => {
     const id = transaccion(() => {
       const r = correr('INSERT INTO domiciliarios(nombre, telefono) VALUES (?,?)', nombre, telefonoNormal(req.body?.telefono) || null);
       const d = uno('SELECT * FROM domiciliarios WHERE id = ?', Number(r.lastInsertRowid));
-      if (req.body?.usuario) crearCuenta(d, req.body.usuario, req.body.clave);
+      if (req.body?.usuario) crearCuenta(d, req.body.usuario, req.body.clave || claveDesdeTelefono(d.telefono));
       return d.id;
     });
     res.json(domiciliarioCompleto(id));
@@ -135,13 +141,32 @@ rutas.put('/domiciliarios/:id', requiere('admin'), (req, res) => {
   if (!d) return res.status(404).json({ error: 'No existe' });
   const b = req.body || {};
   const activo = b.activo === undefined ? d.activo : (b.activo ? 1 : 0);
-  correr('UPDATE domiciliarios SET nombre = ?, telefono = ?, activo = ? WHERE id = ?', limpiar(b.nombre, 80) || d.nombre,
-    b.telefono === undefined ? d.telefono : (telefonoNormal(b.telefono) || null), activo, d.id);
-  if (d.usuario_id) {
-    correr('UPDATE usuarios SET nombre = ?, activo = ? WHERE id = ?', limpiar(b.nombre, 80) || d.nombre, activo, d.usuario_id);
-    if (!activo) correr('DELETE FROM sesiones WHERE usuario_id = ?', d.usuario_id);
-  }
-  res.json(domiciliarioCompleto(d.id));
+  const nombre = limpiar(b.nombre, 80) || d.nombre;
+  const telefono = b.telefono === undefined ? d.telefono : (telefonoNormal(b.telefono) || null);
+  try {
+    transaccion(() => {
+      correr('UPDATE domiciliarios SET nombre = ?, telefono = ?, activo = ? WHERE id = ?', nombre, telefono, activo, d.id);
+      const usuario = b.usuario === undefined ? null : usuarioNormal(b.usuario);
+      // Clave: la que manden; si piden "restablecer", el teléfono.
+      const clave = b.clave ? String(b.clave) : (b.clave_telefono ? claveDesdeTelefono(telefono) : '');
+      if (d.usuario_id) {
+        if (usuario) {
+          const otro = uno('SELECT id FROM usuarios WHERE lower(usuario) = ? AND id <> ?', usuario, d.usuario_id);
+          if (otro) throw new Error('Ese usuario ya existe');
+          correr('UPDATE usuarios SET usuario = ? WHERE id = ?', usuario, d.usuario_id);
+        }
+        correr('UPDATE usuarios SET nombre = ?, activo = ? WHERE id = ?', nombre, activo, d.usuario_id);
+        if (clave) {
+          if (clave.length < 6) throw new Error('La clave debe tener al menos 6 caracteres');
+          correr('UPDATE usuarios SET clave_hash = ? WHERE id = ?', hashClave(clave), d.usuario_id);
+        }
+        if (!activo || clave) correr('DELETE FROM sesiones WHERE usuario_id = ?', d.usuario_id);
+      } else if (usuario) {
+        crearCuenta({ ...d, nombre, telefono, activo }, usuario, clave || claveDesdeTelefono(telefono));
+      }
+    });
+    res.json(domiciliarioCompleto(d.id));
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 // Crear la cuenta de un domiciliario existente, o cambiarle la clave.
 rutas.post('/domiciliarios/:id/cuenta', requiere('admin'), (req, res) => {
@@ -153,7 +178,7 @@ rutas.post('/domiciliarios/:id/cuenta', requiere('admin'), (req, res) => {
       correr('UPDATE usuarios SET clave_hash = ? WHERE id = ?', hashClave(req.body.clave), d.usuario_id);
       correr('DELETE FROM sesiones WHERE usuario_id = ?', d.usuario_id);
     } else {
-      crearCuenta(d, req.body?.usuario, req.body?.clave);
+      crearCuenta(d, req.body?.usuario, req.body?.clave || claveDesdeTelefono(d.telefono));
     }
     res.json(domiciliarioCompleto(d.id));
   } catch (e) { res.status(400).json({ error: e.message }); }

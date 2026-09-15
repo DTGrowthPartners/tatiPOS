@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Home, ClipboardList, CalendarDays, Flower2, Truck, Users, BookImage, BarChart3, Wallet, Settings, LogOut, Plus, MoreHorizontal, MessageCircle, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Home, ClipboardList, CalendarDays, Flower2, Truck, Users, BookImage, BarChart3, Wallet, Settings, LogOut, Plus, MoreHorizontal, MessageCircle, X, PanelLeftClose, PanelLeftOpen, Bike } from 'lucide-react';
 import { useSesion } from '../App';
 
 const SECCIONES = [
@@ -10,6 +10,7 @@ const SECCIONES = [
   { a: '/produccion', t: 'Producción', I: Flower2 },
   { a: '/entregas', t: 'Entregas', I: Truck },
   { a: '/clientes', t: 'Clientes', I: Users },
+  { a: '/domiciliarios', t: 'Domiciliarios', I: Bike, admin: true },
   { a: '/catalogo', t: 'Catálogo', I: BookImage },
   { a: '/seguimientos', t: 'Mensajes', I: MessageCircle },
   { a: '/caja', t: 'Caja', I: Wallet },
@@ -34,9 +35,8 @@ export function Layout() {
     <div className="min-h-dvh md:flex">
       {/* Barra lateral (escritorio) */}
       <aside className={`hidden md:flex md:flex-col shrink-0 bg-white border-r border-rosa-100 sticky top-0 h-dvh no-imprimir transition-[width] duration-200 ${plegada ? 'w-[72px]' : 'w-60'}`}>
-        <div className={`border-b border-rosa-100 ${plegada ? 'px-2 py-3 flex flex-col items-center gap-2' : 'px-4 py-4'}`}>
-          {plegada ? <img src="/iconos/icono-96.png" alt="Floristería Tati Ramos" className="size-10 rounded-xl" /> : <img src="/logo.svg" alt="Floristería Tati Ramos" className="h-12 w-auto" />}
-          {!plegada ? <p className="text-[11px] font-semibold text-rosa-500 tracking-widest uppercase mt-2">TatiPOS</p> : null}
+        <div className={`border-b border-rosa-100 flex items-center justify-center ${plegada ? 'px-2 py-3' : 'px-4 py-4'}`}>
+          <img src="/logo-emblema.png" alt="Floristería Tati Ramos" className={plegada ? 'h-10 w-auto' : 'h-24 w-auto'} />
         </div>
         <nav className={`flex-1 overflow-y-auto space-y-0.5 ${plegada ? 'p-2' : 'p-3'}`}>
           {visibles.map((s) => (
@@ -68,7 +68,7 @@ export function Layout() {
       {/* Contenido */}
       <div className="flex-1 min-w-0">
         <header className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-rosa-100 px-4 py-2.5 flex items-center justify-between no-imprimir">
-          <img src="/logo.svg" alt="Floristería Tati Ramos" className="h-9 w-auto" />
+          <img src="/logo-emblema.png" alt="Floristería Tati Ramos" className="h-12 w-auto" />
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-tinta/60">{usuario?.nombre?.split(' ')[0]}</span>
             <button onClick={salir} className="p-2 rounded-lg hover:bg-rosa-100 cursor-pointer" aria-label="Salir"><LogOut className="size-4" /></button>

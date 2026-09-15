@@ -35,7 +35,7 @@ export default function MisEntregas() {
     <div className="min-h-dvh bg-rosa-50">
       <input ref={fotoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) conFoto(f); e.target.value = ''; }} />
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-rosa-100 px-4 py-2.5 flex items-center justify-between">
-        <img src="/logo.svg" alt="Floristería Tati Ramos" className="h-9 w-auto" />
+        <img src="/logo-emblema.png" alt="Floristería Tati Ramos" className="h-12 w-auto" />
         <div className="flex items-center gap-1">
           <span className="text-xs font-semibold text-tinta/60 mr-1">🛵 {usuario?.nombre?.split(' ')[0]}</span>
           <button onClick={cargar} className="p-2 rounded-lg hover:bg-rosa-100 cursor-pointer" aria-label="Actualizar"><RefreshCw className="size-4" /></button>

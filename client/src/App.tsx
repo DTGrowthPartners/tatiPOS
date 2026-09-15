@@ -20,6 +20,7 @@ import Caja from './paginas/Caja';
 import Configuracion from './paginas/Configuracion';
 import Seguimientos from './paginas/Seguimientos';
 import MisEntregas from './paginas/MisEntregas';
+import Domiciliarios from './paginas/Domiciliarios';
 
 type Sesion = { usuario: Usuario | null; config: Config | null; recargarConfig: () => Promise<void>; salir: () => Promise<void>; esAdmin: boolean };
 const SesionCtx = createContext<Sesion>({ usuario: null, config: null, recargarConfig: async () => {}, salir: async () => {}, esAdmin: false });
@@ -81,6 +82,7 @@ export default function App() {
             <Route path="/catalogo" element={<Catalogo />} />
             <Route path="/seguimientos" element={<Seguimientos />} />
             <Route path="/caja" element={<Caja />} />
+            <Route path="/domiciliarios" element={soloAdmin(<Domiciliarios />)} />
             <Route path="/reportes" element={soloAdmin(<Reportes />)} />
             <Route path="/configuracion" element={soloAdmin(<Configuracion />)} />
             <Route path="*" element={<Navigate to="/" replace />} />
